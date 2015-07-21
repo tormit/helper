@@ -1,0 +1,22 @@
+{
+  "name": "tormit/helper",
+  "description": "General helper for PHP projects.",
+  "license": "MIT",
+  "authors": [
+    {
+      "name": "Tormi Talv",
+      "email": "tormi.talv@ambientia.ee"
+    }
+  ],
+  "require": {
+    "php": ">=5.5.0",
+    "behat/transliterator": "1.*"
+  },
+  "autoload": {
+    "psr-4": {
+      "Tormit\\Helper": "src/"
+    }
+  },
+  "minimum-stability": "dev",
+  "prefer-stable": true
+}
