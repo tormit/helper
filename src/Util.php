@@ -18,14 +18,13 @@
  *
  * @copyright Tormi Talv
  */
-namespace App\Helper;
+namespace Tormit\Helper;
 
 class Util
 {
 
     const DIVIDE_TEXT_EQUAL = 0;
     const DIVIDE_TEXT_FILL = 1;
-    const SECURE_LINK_FORCE_HTTP = true;
 
     private static $extensionToType = array(
         'ez' => 'application/andrew-inset',
@@ -231,101 +230,6 @@ class Util
 
     protected static $filters = array();
     protected static $actions = array();
-
-    /**
-     * Returns array with date components from ISO 8601 date or datetime
-     * Accepted formats:
-     *  - YYYY-MM-DD
-     *  - YYYY-MM-DD HH:MM:SS
-     *  - YYYY-MM-DD HH:MM:SS(Z)or(+/-HH:MM)
-     *
-     * @param string $date ISO 8601 date or datetime
-     * @return string array with date components from date_parse_from_format()
-     */
-    public static function dateTimeFrom8601($date)
-    {
-
-        $zone = 0;
-
-        $keys = array('year', 'month', 'day', 'hour', 'minute', 'second', 'zone', 'zhour', 'zminute');
-        $values = sscanf($date, "%4d-%2d-%2d %2d:%2d:%2d%1s%2d:%2d");
-
-        if ($values[6] == '+' || $values[6] == '-') {
-            $zone = ($values[7] * 60) + $values[8];
-            if ($values[6] == '-') {
-                $zone = -$zone;
-            }
-        }
-
-        $values[6] = $zone;
-
-        return array_combine($keys, $values);
-    }
-
-    /**
-     * Converts date from ISO 8601 to something like Jul 8, 2005 hh:ss
-     *
-     * @param string $date ISO 8601 date or datetime
-     * @return string array with date components from date_parse_from_format()
-     */
-    public static function dateForJs($date)
-    {
-
-        $d = self::dateTimeFrom8601($date);
-
-        return date(
-            'M j, Y',
-            mktime(
-                $d['hour'],
-                $d['minute'],
-                $d['second'],
-                $d['month'],
-                $d['day'],
-                $d['year']
-            )
-        );
-    }
-
-    /**
-     * Creates directory path
-     *
-     * @param string $path
-     * @param integer $perm
-     * @return bool   true if successful, else false
-     */
-    public static function mkdirPath($path, $perm = 0777)
-    {
-        $chunks = explode('/', $path);
-        $made = 0;
-
-        if (empty($chunks[count($chunks) - 1])) {
-            array_pop($chunks);
-        }
-
-        if (is_array($chunks)) {
-            $path2 = '';
-
-            foreach ($chunks as $chunk) {
-                $path2 .= $chunk . '/';
-                if (!is_dir($path2)) {
-
-                    if (@mkdir($path2, $perm)) {
-                        $made += 1;
-                    }
-                } else {
-                    $made += 1;
-                }
-            }
-
-            if ($made == count($chunks)) {
-                return true;
-            } else {
-                return false;
-            }
-        }
-
-        return false;
-    }
 
     /**
      * Find extension from file name
