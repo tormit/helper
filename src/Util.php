@@ -4,9 +4,6 @@
  * General utility functions
  * Since 2005
  *
- * @uses LogUtil version 1.4
- * @uses Few functions depend on Symfony 1.x framework
- *
  * PHP5
  *
  * @version 0.1 7th December 2009
@@ -15,6 +12,9 @@
  *                                Deprecated ambiguous fixHttpAddress() function.
  * @version 1.1.1 6th November 2011 __() checks if I18N is enabled.
  * @version 2.0 27th February 2015 Namespaced. Cleanup.
+ * @version 2.5 29th July 2015 Cleanup of legacy dependencies.
+ *
+ * @todo Write unit tests.
  *
  * @copyright Tormi Talv
  */
