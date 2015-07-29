@@ -14,7 +14,7 @@
   },
   "autoload": {
     "psr-4": {
-      "Tormit\\Helper": "src/"
+      "Tormit\\Helper\\": "src/"
     }
   },
   "minimum-stability": "dev",
