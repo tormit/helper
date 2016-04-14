@@ -1063,6 +1063,84 @@ class Util
 
         return preg_match('/([a|b|c|d|o|r]{1}):\d+/i', $value);
     }
+
+
+    /**
+     * // code from php at moechofe dot com (array_merge comment on php.net)
+     * // used in sfToolkit
+     *
+     * // Added hack to prevent merging certain subarrays(___doNotMerge)
+     *
+     * array arrayDeepMerge ( array array1 [, array array2 [, array ...]] )
+     *
+     * Like array_merge
+     *
+     *  arrayDeepMerge() merges the elements of one or more arrays together so
+     * that the values of one are appended to the end of the previous one. It
+     * returns the resulting array.
+     *  If the input arrays have the same string keys, then the later value for
+     * that key will overwrite the previous one. If, however, the arrays contain
+     * numeric keys, the later value will not overwrite the original value, but
+     * will be appended.
+     *  If only one array is given and the array is numerically indexed, the keys
+     * get reindexed in a continuous way.
+     *
+     * Different from array_merge
+     *  If string keys have arrays for values, these arrays will merge recursively.
+     */
+    public static function arrayMergeDeep()
+    {
+        switch (func_num_args()) {
+            case 0:
+                return false;
+            case 1:
+                return func_get_arg(0);
+            case 2:
+                $args = func_get_args();
+                $args[2] = array();
+                if (is_array($args[0]) && is_array($args[1])) {
+                    if (isset($args[0]['___doNotMerge'])) {
+                        if ($args[0]['___doNotMerge'] == true) {
+                            unset($args[0]['___doNotMerge']);
+                            return $args[0];
+                        } else {
+                            unset($args[0]['___doNotMerge']);
+                        }
+                    }
+                    if (isset($args[1]['___doNotMerge']) && $args[1]['___doNotMerge'] == true) {
+                        if ($args[1]['___doNotMerge'] == true) {
+                            unset($args[1]['___doNotMerge']);
+                            return $args[1];
+                        } else {
+                            unset($args[1]['___doNotMerge']);
+                        }
+                    }
+                    foreach (array_unique(array_merge(array_keys($args[0]), array_keys($args[1]))) as $key) {
+                        $isKey0 = array_key_exists($key, $args[0]);
+                        $isKey1 = array_key_exists($key, $args[1]);
+                        if ($isKey0 && $isKey1 && is_array($args[0][$key]) && is_array($args[1][$key])) {
+                            $args[2][$key] = self::arrayMergeDeep($args[0][$key], $args[1][$key]);
+                        } else if ($isKey0 && $isKey1) {
+                            $args[2][$key] = $args[1][$key];
+                        } else if (!$isKey1) {
+                            $args[2][$key] = $args[0][$key];
+                        } else if (!$isKey0) {
+                            $args[2][$key] = $args[1][$key];
+                        }
+                    }
+                    return $args[2];
+                } else {
+                    return $args[1];
+                }
+            default :
+                $args = func_get_args();
+                $args[1] = self::arrayMergeDeep($args[0], $args[1]);
+                array_shift($args);
+
+                return self::arrayMergeDeep(...$args); // !! PHP 5.6 feature
+                break;
+        }
+    }
 }
 
 
