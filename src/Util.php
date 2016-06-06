@@ -638,32 +638,33 @@ class Util
     }
 
     /**
-     * Extract person name into two parts(first name, last name).
+     * Extract person name into $nrOfParts parts(first name, last name[, or more]).
      *
-     * @example John Smith -> ['John', 'Smith']
+     * @example John Smith -> 2 ==> ['John', 'Smith']
+     * @example John Smith Wesson -> 2 ==> ['John', 'Smith'], 4 ==> ['John', 'Smith', 'Wesson', '']
      * @example John -> ['John', '']
      *
      * @param string $name
+     * @param int $nrOfParts
      * @return array
      */
-    public static function explodeName($name)
+    public static function explodeName($name, $nrOfParts = 2)
     {
-        $a1 = '';
-        $a2 = '';
-
+        $parts = [];
         if (is_scalar($name) && strlen($name) > 0) {
-            $tmp = preg_split('/[ \t\r\n]+/i', $name, 2);
-            if ($tmp) {
-                if (isset($tmp[0])) {
-                    $a1 = $tmp[0];
-                }
-                if (isset($tmp[1])) {
-                    $a2 = $tmp[1];
+            $nameParts = preg_split('/[ \t\r\n]+/i', $name, $nrOfParts);
+            if ($nameParts) {
+                for ($i = 0; $i < $nrOfParts; $i++) {
+                    if (isset($nameParts[$i])) {
+                        $parts[$i] = $nameParts[$i];
+                    } else {
+                        $parts[$i] = '';
+                    }
                 }
             }
         }
 
-        return array($a1, $a2);
+        return $parts;
     }
 
     public static function cleanupArray(array &$array, $stripedFieldNames, $level = 1, $recursionLimit = 50)
