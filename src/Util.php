@@ -1142,6 +1142,25 @@ class Util
                 break;
         }
     }
+
+    /**
+     * Run a workload on number of items by range.
+     *
+     * @param $itemsCount
+     * @param callable $workload
+     * @param int $batchSize
+     */
+    public static function runBatchAction($itemsCount, callable $workload, $batchSize = 200)
+    {
+        $offset = 0;
+
+        while ($offset < $itemsCount) {
+            $workload($offset, $batchSize);
+
+            $offset += $batchSize;
+        }
+    }
+
 }
 
 
