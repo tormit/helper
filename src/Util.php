@@ -1150,7 +1150,7 @@ class Util
      * @param callable $workload($offset, $batchSize)
      * @param int $batchSize
      */
-    public static function runBatchAction($itemsCount, callable $workload, $batchSize = 200)
+    public static function runBatchAction($itemsCount, callable $workload, $batchSize)
     {
         $offset = 0;
 
