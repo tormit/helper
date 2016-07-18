@@ -1147,7 +1147,7 @@ class Util
      * Run a workload on number of items by range.
      *
      * @param $itemsCount
-     * @param callable $workload
+     * @param callable $workload($offset, $batchSize)
      * @param int $batchSize
      */
     public static function runBatchAction($itemsCount, callable $workload, $batchSize = 200)
