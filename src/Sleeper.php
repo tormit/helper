@@ -17,6 +17,7 @@ class Sleeper
 {
     protected $microseconds = 1000;
     protected $retries = 1;
+    protected $escalateFactor = 1.0;
 
     public function seconds($seconds)
     {
@@ -40,6 +41,20 @@ class Sleeper
     }
 
     /**
+     * Wait time is cumulatively multiplied by this factor.
+     * Example: For sleep time 2s and 1.5x escalate, you get sleep times: 2.00 3.00 4.50 6.75 10.13 etc.
+     *
+     * @param $escalateFactor
+     * @return $this
+     */
+    public function escalate($escalateFactor)
+    {
+        $this->escalateFactor = $escalateFactor;
+
+        return $this;
+    }
+
+    /**
      * Waits for gives time x times until condition is true.
      *
      * @param callable $condition
@@ -55,6 +70,7 @@ class Sleeper
             }
 
             $this->retries--;
+            $this->microseconds *= $this->escalateFactor;
         }
 
         return false;
