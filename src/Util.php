@@ -18,7 +18,10 @@
  *
  * @copyright Tormi Talv
  */
+
 namespace Tormit\Helper;
+
+use voku\helper\UTF8;
 
 class Util
 {
@@ -457,7 +460,13 @@ class Util
         };
 
         foreach (array_flip($row) as $name => $value) {
-            $lines .= sprintf("const %s%s%s = %s;\n", $santitizeName($prefix), $santitizeName($name), $santitizeName($suffix), var_export($value, true));
+            $lines .= sprintf(
+                "const %s%s%s = %s;\n",
+                $santitizeName($prefix),
+                $santitizeName($name),
+                $santitizeName($suffix),
+                var_export($value, true)
+            );
         }
 
         return $lines;
@@ -635,6 +644,66 @@ class Util
         }
 
         return $string;
+    }
+
+    /**
+     * @param string $content
+     * @param string $keyword
+     * @param int $size
+     * @return string
+     */
+    public static function truncateAroundKeyword(string $content, string $keyword, int $size = 80): string
+    {
+        $content = UTF8::strip_tags($content);
+        $pos = UTF8::stripos($content, $keyword);
+
+        if (!$pos) {
+            $pos = 0;
+        }
+
+        $start = $pos - $size;
+        if ($start < 0) {
+            $start = 0;
+        }
+
+        $length = $size + UTF8::strlen($keyword) + $size;
+
+        $dots1 = '...';
+        if ($start === 0) {
+            $dots1 = '';
+        }
+        $dots2 = '...';
+        if ($start + $length >= UTF8::strlen($content)) {
+            $dots2 = '';
+        }
+        $truncated = $dots1 . UTF8::substr($content, $start, $size + UTF8::strlen($keyword) + $size) . $dots2;
+
+        $finalValue = UTF8::str_ireplace($keyword, "<strong>$keyword</strong>", $truncated);
+        if (is_string($finalValue)) {
+            return $finalValue;
+        }
+
+        return $content;
+    }
+
+    /**
+     * Truncates +text+ to the length of +length+ and replaces the last three characters with the +truncate_string+
+     * if the +text+ is longer than +length+.
+     *
+     * @param string $text
+     * @param int $length
+     * @param string $delimiter
+     * @return string
+     */
+    public static function truncateText(string $text, int $length = 30, string $delimiter = '...'): string
+    {
+        if (UTF8::strlen($text) > $length) {
+            $truncatedText = UTF8::substr(UTF8::trim($text), 0, $length - UTF8::strlen($delimiter));
+
+            return $truncatedText . $delimiter;
+        }
+
+        return $text;
     }
 
     /**
@@ -916,7 +985,8 @@ class Util
             return false;
         }
 
-        $regex = '%(https|http|ftp)\:\/\/|([a-z0-9A-Z]+\.[a-z0-9A-Z]+\.[a-zA-Z]{2,4})|([a-z0-9A-Z]+\.[a-zA-Z]{2,4})|\?([a-zA-Z0-9]+[\&\=\#a-z]+)%i'; // Anchor
+        $regex =
+            '%(https|http|ftp)\:\/\/|([a-z0-9A-Z]+\.[a-z0-9A-Z]+\.[a-zA-Z]{2,4})|([a-z0-9A-Z]+\.[a-zA-Z]{2,4})|\?([a-zA-Z0-9]+[\&\=\#a-z]+)%i'; // Anchor
         if (preg_match($regex, $url, $result)) {
             return true;
         }
@@ -1147,7 +1217,7 @@ class Util
      * Run a workload on number of items by range.
      *
      * @param $itemsCount
-     * @param callable $workload($offset, $batchSize)
+     * @param callable $workload ($offset, $batchSize)
      * @param int $batchSize
      */
     public static function runBatchAction($itemsCount, callable $workload, $batchSize)
