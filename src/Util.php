@@ -916,7 +916,7 @@ class Util
 
     public static function autoAppendSlash($url, $slash = '/')
     {
-        if (stripos($url, $slash) !== strlen($url) - 1) {
+        if ($url{strlen($url) - 1} !== $slash) {
             $url = $url . $slash;
         }
 
