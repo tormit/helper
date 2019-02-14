@@ -57,13 +57,14 @@ class Sleeper
     /**
      * Waits for gives time x times until condition is true.
      *
-     * @param callable $condition
+     * @param callable $condition Callback params (int $attemptNumber)
      * @return bool
      */
     public function whileTrue(callable $condition)
     {
+        $attempt = 1;
         while ($this->retries > 0) {
-            if (!$condition()) {
+            if (!$condition($attempt)) {
                 usleep($this->microseconds);
             } else {
                 return true;
@@ -71,6 +72,7 @@ class Sleeper
 
             $this->retries--;
             $this->microseconds *= $this->escalateFactor;
+            $attempt++;
         }
 
         return false;
