@@ -246,7 +246,7 @@ class Util
         $filename = strtolower($filename);
         $exts = explode(".", $filename);
 
-        if (count($exts) == 1) {
+        if (count($exts) === 0) {
             return '';
         }
 
