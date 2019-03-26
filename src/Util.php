@@ -1040,7 +1040,7 @@ class Util
         $content = '';
         foreach ($tags as $tag) {
             if ($stripContent) {
-                $content = '(.+</' . $tag . '[^>]*>|)';
+                $content = '(.+</*' . $tag . '>*)';
             }
             $str = preg_replace('#</?' . $tag . '[^>]*>' . $content . '#is', '', $str);
         }
