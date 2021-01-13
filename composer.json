@@ -9,9 +9,10 @@
     }
   ],
   "require": {
-    "php": ">=7.1",
-    "behat/transliterator": "^1.2",
-    "voku/portable-utf8": "^5.0"
+    "php": ">=7.4",
+    "behat/transliterator": "^v1.3.0",
+    "voku/portable-utf8": "^5.4.51",
+    "illuminate/support": "^v6.18.40|v7.28.1|^v8.22.1"
   },
   "autoload": {
     "psr-4": {

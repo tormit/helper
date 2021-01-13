@@ -4,6 +4,7 @@
  * @since 2016-06-06 12:59
  * @version 1.0
  */
+declare(strict_types=1);
 
 namespace Tormit\Helper;
 
@@ -15,25 +16,25 @@ namespace Tormit\Helper;
  */
 class Sleeper
 {
-    protected $microseconds = 1000;
-    protected $retries = 1;
-    protected $escalateFactor = 1.0;
+    protected int $microseconds = 1000;
+    protected int $retries = 1;
+    protected float $escalateFactor = 1.0;
 
-    public function seconds($seconds)
+    public function seconds(int $seconds): Sleeper
     {
         $this->microseconds = $seconds * 1000 * 1000;
 
         return $this;
     }
 
-    public function milliseconds($milliseconds)
+    public function milliseconds(int $milliseconds): Sleeper
     {
         $this->microseconds = $milliseconds * 1000;
 
         return $this;
     }
 
-    public function times($times)
+    public function times(int $times): Sleeper
     {
         $this->retries = $times;
 
@@ -47,7 +48,7 @@ class Sleeper
      * @param $escalateFactor
      * @return $this
      */
-    public function escalate($escalateFactor)
+    public function escalate(float $escalateFactor): Sleeper
     {
         $this->escalateFactor = $escalateFactor;
 
@@ -60,7 +61,7 @@ class Sleeper
      * @param callable $condition Callback params (int $attemptNumber)
      * @return bool
      */
-    public function whileTrue(callable $condition)
+    public function whileTrue(callable $condition): bool
     {
         $attempt = 1;
         while ($this->retries > 0) {
@@ -78,7 +79,7 @@ class Sleeper
         return false;
     }
 
-    public static function wait()
+    public static function wait(): Sleeper
     {
         return new self;
     }

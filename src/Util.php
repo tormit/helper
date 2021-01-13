@@ -18,18 +18,17 @@
  *
  * @copyright Tormi Talv
  */
+declare(strict_types=1);
 
 namespace Tormit\Helper;
-
-use voku\helper\UTF8;
 
 class Util
 {
 
-    const DIVIDE_TEXT_EQUAL = 0;
-    const DIVIDE_TEXT_FILL = 1;
+    public const DIVIDE_TEXT_EQUAL = 0;
+    public const DIVIDE_TEXT_FILL = 1;
 
-    private static $extensionToType = array(
+    private static array $extensionToType = array(
         'ez' => 'application/andrew-inset',
         'atom' => 'application/atom+xml',
         'jar' => 'application/java-archive',
@@ -231,17 +230,17 @@ class Util
         'ddoc' => 'application/x-ddoc'
     );
 
-    protected static $filters = array();
-    protected static $actions = array();
+    protected static array $filters = [];
+    protected static array $actions = [];
 
     /**
      * Find extension from file name
      *
-     * @param  string $filename
+     * @param string $filename
      *
      * @return  string  found extension
      */
-    public static function findExt($filename)
+    public static function findExt(string $filename): string
     {
         $filename = strtolower($filename);
         $exts = explode(".", $filename);
@@ -256,11 +255,11 @@ class Util
     /**
      * Find filename from file name
      *
-     * @param  string $filename
+     * @param string $filename
      *
      * @return  string  found extension
      */
-    public static function findFilename($filename)
+    public static function findFilename(string $filename): string
     {
         $filename = basename($filename);
         $exts = explode(".", $filename);
@@ -279,7 +278,7 @@ class Util
      * @param callable $preCondition ($file)
      * @return boolean
      */
-    public static function rmdirPath($dir, $clearOnly = false, $preserveRootDir = true, $preCondition = null)
+    public static function rmdirPath(string $dir, bool $clearOnly = false, bool $preserveRootDir = true, ?callable $preCondition = null): bool
     {
         if (!file_exists($dir)) {
             return true;
@@ -309,7 +308,7 @@ class Util
         }
     }
 
-    public static function clearDir($dir)
+    public static function clearDir(string $dir): bool
     {
         return self::rmdirPath($dir, true);
     }
@@ -324,7 +323,7 @@ class Util
      * @return array
      * @throws \Exception
      */
-    public static function csvToArray($file, $separator = ',', $skipHeader = false, $utf8Encode = false)
+    public static function csvToArray(string $file, string $separator = ',', bool $skipHeader = false, bool $utf8Encode = false): array
     {
         if (!is_readable($file)) {
             throw new \Exception('Cannot read ' . $file);
@@ -332,8 +331,8 @@ class Util
 
         $f = fopen($file, 'r');
         $row = 0;
-        $master = array();
-        $header = array();
+        $master = [];
+        $header = [];
         if ($f !== false) {
             while (($data = fgetcsv($f, 0, $separator)) !== false) {
                 if ($skipHeader && $row == 0) {
@@ -372,7 +371,7 @@ class Util
      * @version 2.0 10th July 2011 - Improved randomness.
      * @version 2.5 11th July 2013 - Improved randomness. Special characters option.
      */
-    public static function randStr($len, $extraFeed, $allowSpecialCharacters = false)
+    public static function randStr(int $len, string $extraFeed, bool $allowSpecialCharacters = false): string
     {
         $newString = "";
         $symbols = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
@@ -416,11 +415,11 @@ class Util
      * @param int $num Number of elements to return
      * @return mixed Random elements
      **/
-    public static function array_random($arr, $num = 1)
+    public static function array_random(array $arr, int $num = 1)
     {
         shuffle($arr);
 
-        $r = array();
+        $r = [];
         for ($i = 0; $i < $num; $i++) {
             $r[] = $arr[$i];
         }
@@ -430,7 +429,7 @@ class Util
     /**
      * @return string
      */
-    public static function getRequestUriStartPath()
+    public static function getRequestUriStartPath(): string
     {
         if (empty($_SERVER['REQUEST_URI'])) {
             return '';
@@ -451,7 +450,7 @@ class Util
      * @param string $suffix
      * @return string
      */
-    public static function generatePhpConstants(array $row, $prefix = '', $suffix = '')
+    public static function generatePhpConstants(array $row, string $prefix = '', string $suffix = ''): string
     {
         $lines = '';
 
@@ -479,22 +478,9 @@ class Util
      * @return mixed flat array
      **/
 
-    function array_flatten(array $array)
+    public static function array_flatten(array $array): array
     {
-        $flat = array(); // initialize return array
-        $stack = array_values($array); // initialize stack
-        while ($stack) // process stack until done
-        {
-            $value = array_shift($stack);
-            if (is_array($value)) // a value to further process
-            {
-                $stack = array_merge(array_values($value), $stack);
-            } else // a value to take
-            {
-                $flat[] = $value;
-            }
-        }
-        return $flat;
+        return \Util\Arr::flatten($array);
     }
 
     /**
@@ -503,9 +489,9 @@ class Util
      * @param bool $full
      * @return string
      */
-    public static function getWebPath($full = false)
+    public static function getWebPath(bool $full = false): string
     {
-        if (isset($_SERVER['HTTPS']) AND (!empty($_SERVER['HTTPS'])) AND strtolower($_SERVER['HTTPS']) != 'off') {
+        if (isset($_SERVER['HTTPS']) and (!empty($_SERVER['HTTPS'])) and strtolower($_SERVER['HTTPS']) != 'off') {
             $https = 's';
         } else {
             $https = '';
@@ -520,12 +506,12 @@ class Util
     /**
      * Fixes http address.
      *
-     * @deprecated Use Util::prependHttp() instead
-     *
      * @param string $www
      * @return string fixed input
+     * @deprecated Use Util::prependHttp() instead
+     *
      */
-    public static function fixHttpAddress($www)
+    public static function fixHttpAddress(string $www): string
     {
         if (strpos($www, 'http://') !== 0) {
             $www = 'http://' . $www;
@@ -543,15 +529,15 @@ class Util
      *      Util::DIVIDE_TEXT_EQUAL - divides text equally over $numberOfPieces;
      *      Util::DIVIDE_TEXT_FILL - divides text into n pieces of size $pieceSize
      *
-     * @return array Parts of source string. If source string is empty, then empty array will be returned.
+     * @return string[] Parts of source string. If source string is empty, then empty array will be returned.
      */
     public static function divideText(
-        $string,
-        $numberOfPieces = null,
-        $pieceSize = null,
-        $type = self::DIVIDE_TEXT_EQUAL
-    ) {
-        $pieces = array();
+        string $string,
+        int $numberOfPieces,
+        int $pieceSize,
+        int $type = self::DIVIDE_TEXT_EQUAL
+    ): array {
+        $pieces = [];
         $stringLength = strlen($string);
 
         if ($stringLength == 0 || ($numberOfPieces == 0 && $pieceSize == 0)) {
@@ -590,7 +576,7 @@ class Util
      * @param string $string Incomplete url.
      * @return string String with preceding "http://"
      */
-    public static function prependHttp($string)
+    public static function prependHttp(string $string): string
     {
         if (strlen($string) > 0) {
             preg_match('%(\w+)://(\S+)%', $string, $matches, PREG_OFFSET_CAPTURE);
@@ -612,9 +598,9 @@ class Util
      *
      * @param string $string Complete url
      * @param array $options
-     * @return array $options
+     * @return string
      */
-    public static function shortenUrl($string, $options = array())
+    public static function shortenUrl(string $string, array $options = []): string
     {
         $defaultOptions = array(
             'strip-protocol' => true,
@@ -654,8 +640,8 @@ class Util
      */
     public static function truncateAroundKeyword(string $content, string $keyword, int $size = 80): string
     {
-        $content = UTF8::strip_tags($content);
-        $pos = UTF8::stripos($content, $keyword);
+        $content = \voku\helper\UTF8::strip_tags($content);
+        $pos = \voku\helper\UTF8::stripos($content, $keyword);
 
         if (!$pos) {
             $pos = 0;
@@ -666,19 +652,19 @@ class Util
             $start = 0;
         }
 
-        $length = $size + UTF8::strlen($keyword) + $size;
+        $length = $size + \voku\helper\UTF8::strlen($keyword) + $size;
 
         $dots1 = '...';
         if ($start === 0) {
             $dots1 = '';
         }
         $dots2 = '...';
-        if ($start + $length >= UTF8::strlen($content)) {
+        if ($start + $length >= \voku\helper\UTF8::strlen($content)) {
             $dots2 = '';
         }
-        $truncated = $dots1 . UTF8::substr($content, $start, $size + UTF8::strlen($keyword) + $size) . $dots2;
+        $truncated = $dots1 . \voku\helper\UTF8::substr($content, $start, $size + \voku\helper\UTF8::strlen($keyword) + $size) . $dots2;
 
-        $finalValue = UTF8::str_ireplace($keyword, "<strong>$keyword</strong>", $truncated);
+        $finalValue = \voku\helper\UTF8::str_ireplace($keyword, "<strong>$keyword</strong>", $truncated);
         if (is_string($finalValue)) {
             return $finalValue;
         }
@@ -697,8 +683,8 @@ class Util
      */
     public static function truncateText(string $text, int $length = 30, string $delimiter = '...'): string
     {
-        if (UTF8::strlen($text) > $length) {
-            $truncatedText = UTF8::substr(UTF8::trim($text), 0, $length - UTF8::strlen($delimiter));
+        if (\voku\helper\UTF8::strlen($text) > $length) {
+            $truncatedText = \voku\helper\UTF8::substr(\voku\helper\UTF8::trim($text), 0, $length - \voku\helper\UTF8::strlen($delimiter));
 
             return $truncatedText . $delimiter;
         }
@@ -709,15 +695,15 @@ class Util
     /**
      * Extract person name into $nrOfParts parts(first name, last name[, or more]).
      *
+     * @param string $name
+     * @param int $nrOfParts
+     * @return array
      * @example John Smith -> 2 ==> ['John', 'Smith']
      * @example John Smith Wesson -> 2 ==> ['John', 'Smith'], 4 ==> ['John', 'Smith', 'Wesson', '']
      * @example John -> ['John', '']
      *
-     * @param string $name
-     * @param int $nrOfParts
-     * @return array
      */
-    public static function explodeName($name, $nrOfParts = 2)
+    public static function explodeName(string $name, int $nrOfParts = 2): array
     {
         $parts = [];
         if (is_scalar($name) && strlen($name) > 0) {
@@ -736,7 +722,7 @@ class Util
         return $parts;
     }
 
-    public static function cleanupArray(array &$array, $stripedFieldNames, $level = 1, $recursionLimit = 50)
+    public static function cleanupArray(array &$array, array $stripedFieldNames, int $level = 1, int $recursionLimit = 50): void
     {
         foreach ($array as $key => &$value) {
             if (isset($stripedFieldNames[$key]) && $stripedFieldNames[$key]) {
@@ -757,7 +743,7 @@ class Util
      * @param string $sep
      * @return string Converted file size with unit
      */
-    public static function fileSize($size, $sep = ' ')
+    public static function fileSize(int $size, string $sep = ' '): string
     {
         $unit = null;
         $units = array('B', 'KB', 'MB', 'GB', 'TB');
@@ -774,9 +760,8 @@ class Util
         return round($size, 2) . $sep . $unit;
     }
 
-    public static function guessMime($file, $defaultType = 'application/octet-stream')
+    public static function guessMime(string $file, string $defaultType = 'application/octet-stream'): string
     {
-
         if (!is_readable($file)) {
             return $defaultType;
         }
@@ -804,7 +789,7 @@ class Util
         return $defaultType;
     }
 
-    public static function iniGetBytes($key)
+    public static function iniGetBytes(string $key): float
     {
         $val = ini_get($key);
         $val = trim($val);
@@ -822,9 +807,9 @@ class Util
         return $val;
     }
 
-    public static function arrayFlatten(array $a1, $parentKey = '', $level = 1)
+    public static function arrayFlatten(array $a1, string $parentKey = '', int $level = 1)
     {
-        $flat = array();
+        $flat = [];
         foreach ($a1 as $k => $v) {
             if (is_array($v)) {
                 if ($level <= 50) {
@@ -838,7 +823,7 @@ class Util
         return $flat;
     }
 
-    public static function parseYoutubeUrl($url)
+    public static function parseYoutubeUrl(string $url): ?string
     {
         $pattern = '#^(?:https?://)?'; # Optional URL scheme. Either http or https.
         $pattern .= '(?:www\.)?'; #  Optional www subdomain.
@@ -855,13 +840,13 @@ class Util
         $pattern .= '([\w-]{11})'; # 11 characters (Length of Youtube video ids).
         $pattern .= '(?:.+)?$#x'; # Optional other ending URL parameters.
         preg_match($pattern, $url, $matches);
-        return (isset($matches[1])) ? $matches[1] : false;
+        return (isset($matches[1])) ? $matches[1] : null;
     }
 
 
-    public static function parseEmailAddressIntoArray($address)
+    public static function parseEmailAddressIntoArray(string $address): array
     {
-        $emails = array();
+        $emails = [];
 
         if (preg_match_all('/\s*"?([^><,"]+)"?\s*((?:<[^><,]+>)?)\s*/', $address, $matches, PREG_SET_ORDER) > 0) {
             foreach ($matches as $m) {
@@ -876,12 +861,12 @@ class Util
         return $emails;
     }
 
-    public static function trimmedStrlen($str)
+    public static function trimmedStrlen(string $str): string
     {
-        return strlen(trim($str));
+        return \voku\helper\UTF8::strlen(\voku\helper\UTF8::trim($str));
     }
 
-    public static function autoParagraph($text)
+    public static function autoParagraph(string $text): string
     {
         if (!preg_match('%(<p[^>]*>.*?</p>)%i', $text, $regs)) {
             return sprintf('<p class="util-autoParagraph">%s</p>', $text);
@@ -890,22 +875,22 @@ class Util
         }
     }
 
-    public static function isHttpsRequest()
+    public static function isHttpsRequest(): bool
     {
         return (isset($_SERVER['HTTPS']) && strlen($_SERVER['HTTPS']) > 0 && $_SERVER['HTTPS'] != 'off') ? true : false;
     }
 
-    public static function singlelinefy($text)
+    public static function singlelinefy(string $text): string
     {
         return strip_tags(str_replace(array("\n", "\r"), ' ', $text));
     }
 
-    public static function floatval($value)
+    public static function floatval($value): float
     {
         return floatval(str_replace(',', '.', $value));
     }
 
-    public static function autoPrependSlash($url, $slash = '/')
+    public static function autoPrependSlash(string $url, string $slash = '/'): string
     {
         if (stripos($url, $slash) !== 0) {
             $url = $slash . $url;
@@ -914,21 +899,21 @@ class Util
         return $url;
     }
 
-    public static function autoAppendSlash($url, $slash = '/')
+    public static function autoAppendSlash(string $url, string $slash = '/'): string
     {
-        if ($url{strlen($url) - 1} !== $slash) {
+        if (!\Illuminate\Support\Str::endsWith($url, $slash)) {
             $url = $url . $slash;
         }
 
         return $url;
     }
 
-    public static function rotateTableArray(array $array, $field = null)
+    public static function rotateTableArray(array $array, ?string $field = null): array
     {
         if (!is_array(reset($array))) { // not multidimensional
             return $array;
         }
-        $newArray = array();
+        $newArray = [];
         foreach ($array as $i => $level1) {
             foreach ($level1 as $j => $level2) {
                 if ($field !== null) {
@@ -941,16 +926,16 @@ class Util
         return $newArray;
     }
 
-    public static function replaceEmpty($value = null, $replacer = '-')
+    public static function replaceEmpty(string $value, string $replacer = '-'): string
     {
-        if (empty($value)) { // not multidimensional
+        if (empty($value)) {
             return $replacer;
         } else {
             return $value;
         }
     }
 
-    public static function deepCount(array $array = array())
+    public static function deepCount(array $array = []): int
     {
         $count = 0;
         foreach ($array as $item) {
@@ -963,7 +948,7 @@ class Util
         return $count;
     }
 
-    public static function isExternalUrl($url)
+    public static function isExternalUrl(string $url): bool
     {
         $url = trim($url);
         if (strlen($url) == 0) {
@@ -1001,7 +986,7 @@ class Util
      * @param $file
      * @return bool
      */
-    public static function isTextFile($file)
+    public static function isTextFile(string $file): bool
     {
         if (!file_exists($file) || !is_readable($file)) {
             return false;
@@ -1030,9 +1015,9 @@ class Util
      * @param $str
      * @param $tags
      * @param bool $stripContent
-     * @return mixed
+     * @return string
      */
-    public static function stripSelectedTags($str, array $tags = array(), $stripContent = false)
+    public static function stripSelectedTags(string $str, array $tags = [], bool $stripContent = false): string
     {
         if (count($tags) == 0) {
             return strip_tags($str);
@@ -1047,23 +1032,23 @@ class Util
         return $str;
     }
 
-    public static function randFloat($min, $max, $decimals = 2)
+    public static function randFloat(float $min, float $max, int $decimals = 2): float
     {
         $step = pow(10, $decimals);
         return round((rand($min * $step, $max * $step) / $step), $decimals);
     }
 
 
-    public static function addFilter($tag, $callback)
+    public static function addFilter(string $tag, callable $callback): void
     {
         if (!isset(self::$filters[$tag])) {
-            self::$filters[$tag] = array();
+            self::$filters[$tag] = [];
         }
 
         self::$filters[$tag][] = $callback;
     }
 
-    public static function applyFilters($tag, $value)
+    public static function applyFilters(string $tag, $value)
     {
         if (isset(self::$filters[$tag]) && is_array(self::$filters[$tag])) {
             foreach (self::$filters[$tag] as $callback) {
@@ -1077,16 +1062,16 @@ class Util
         return $value;
     }
 
-    public static function addAction($tag, $callback)
+    public static function addAction(string $tag, callable $callback): void
     {
         if (!isset(self::$actions[$tag])) {
-            self::$actions[$tag] = array();
+            self::$actions[$tag] = [];
         }
 
         self::$actions[$tag][] = $callback;
     }
 
-    public static function applyActions($tag)
+    public static function applyActions(string $tag): void
     {
         if (isset(self::$actions[$tag]) && is_array(self::$actions[$tag])) {
             $args = func_get_args();
@@ -1096,7 +1081,7 @@ class Util
         }
     }
 
-    public static function parseDomain($url)
+    public static function parseDomain(string $url): string
     {
         $subTlds = array(
             'co' => 1,
@@ -1122,7 +1107,7 @@ class Util
         return $domain;
     }
 
-    public static function isSerialised($value)
+    public static function isSerialised(string $value): bool
     {
         if (empty($value)) {
             return false;
@@ -1159,16 +1144,16 @@ class Util
      * Different from array_merge
      *  If string keys have arrays for values, these arrays will merge recursively.
      */
-    public static function arrayMergeDeep()
+    public static function arrayMergeDeep(): array
     {
         switch (func_num_args()) {
             case 0:
-                return false;
+                return [];
             case 1:
                 return func_get_arg(0);
             case 2:
                 $args = func_get_args();
-                $args[2] = array();
+                $args[2] = [];
                 if (is_array($args[0]) && is_array($args[1])) {
                     if (isset($args[0]['___doNotMerge'])) {
                         if ($args[0]['___doNotMerge'] == true) {
@@ -1216,11 +1201,11 @@ class Util
     /**
      * Run a workload on number of items by range.
      *
-     * @param $itemsCount
+     * @param int $itemsCount
      * @param callable $workload ($offset, $batchSize)
      * @param int $batchSize
      */
-    public static function runBatchAction($itemsCount, callable $workload, $batchSize)
+    public static function runBatchAction(int $itemsCount, callable $workload, int $batchSize): void
     {
         $offset = 0;
 
