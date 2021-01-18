@@ -16,7 +16,7 @@ namespace Tormit\Helper;
  */
 class Sleeper
 {
-    protected int $microseconds = 1000;
+    protected float $microseconds = 1000;
     protected int $retries = 1;
     protected float $escalateFactor = 1.0;
 
