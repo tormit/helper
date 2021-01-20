@@ -16,7 +16,7 @@ namespace Tormit\Helper;
  */
 class Sleeper
 {
-    protected float $microseconds = 1000;
+    protected int $microseconds = 1000;
     protected int $retries = 1;
     protected float $escalateFactor = 1.0;
 
@@ -72,7 +72,7 @@ class Sleeper
             }
 
             $this->retries--;
-            $this->microseconds *= $this->escalateFactor;
+            $this->microseconds = (int)ceil($this->microseconds * $this->escalateFactor);
             $attempt++;
         }
 
