@@ -480,7 +480,7 @@ class Util
 
     public static function array_flatten(array $array): array
     {
-        return \Util\Arr::flatten($array);
+        return \Illuminate\Support\Arr::flatten($array);
     }
 
     /**
