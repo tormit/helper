@@ -890,6 +890,15 @@ class Util
         return floatval(str_replace(',', '.', $value));
     }
 
+    public static function clamp($min, $max, $currentValue)
+    {
+        if (!is_numeric($min) || !is_numeric($max) || !is_numeric($currentValue)) {
+            throw new \InvalidArgumentException('All inputs must be numeric!');
+        }
+
+        return max($min, min($max, $currentValue));
+    }
+
     public static function autoPrependSlash(string $url, string $slash = '/'): string
     {
         if (stripos($url, $slash) !== 0) {
