@@ -812,7 +812,7 @@ class Util
         $flat = [];
         foreach ($a1 as $k => $v) {
             if (in_array($k, $except)) {
-                $flat[$k] = $v;
+                $flat[$parentKey . $k] = $v;
                 continue;
             }
 
