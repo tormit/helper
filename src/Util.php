@@ -807,13 +807,18 @@ class Util
         return $val;
     }
 
-    public static function arrayFlatten(array $a1, string $parentKey = '', int $level = 1)
+    public static function arrayFlatten(array $a1, string $parentKey = '', int $level = 1, array $except = [])
     {
         $flat = [];
         foreach ($a1 as $k => $v) {
+            if (in_array($k, $except)) {
+                $flat[$k] = $v;
+                continue;
+            }
+
             if (is_array($v)) {
                 if ($level <= 50) {
-                    $flat += self::arrayFlatten($v, $parentKey . $k . '___', $level++);
+                    $flat += self::arrayFlatten($v, $parentKey . $k . '___', $level++, $except);
                 }
             } else {
                 $flat[$parentKey . $k] = $v;
