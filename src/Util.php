@@ -275,7 +275,7 @@ class Util
      * @param bool $clearOnly
      * @param bool $preserveRootDir Whether to remove root of $dir.
      *
-     * @param callable $preCondition ($file)
+     * @param callable|null $preCondition ($file)
      * @return boolean
      */
     public static function rmdirPath(string $dir, bool $clearOnly = false, bool $preserveRootDir = true, ?callable $preCondition = null): bool
@@ -361,8 +361,8 @@ class Util
     /**
      * Random string generator.
      *
-     * @param $len
-     * @param $extraFeed array Can be any variable. Array with some user input recommended.
+     * @param int $len
+     * @param string $extraFeed array Can be any variable. Array with some user input recommended.
      * @param bool $allowSpecialCharacters
      *
      * @return  string  generated string
@@ -513,7 +513,7 @@ class Util
      */
     public static function fixHttpAddress(string $www): string
     {
-        if (strpos($www, 'http://') !== 0) {
+        if (!str_starts_with($www, 'http://')) {
             $www = 'http://' . $www;
         }
         return $www;
@@ -550,7 +550,7 @@ class Util
                     $pieces[] = substr(
                         $string,
                         $i * floor($stringLength / $numberOfPieces),
-                        ceil($stringLength / $numberOfPieces)
+                        (int)ceil($stringLength / $numberOfPieces)
                     );
                 }
             } else {
@@ -706,7 +706,7 @@ class Util
     public static function explodeName(string $name, int $nrOfParts = 2): array
     {
         $parts = [];
-        if (is_scalar($name) && strlen($name) > 0) {
+        if (strlen($name) > 0) {
             $nameParts = preg_split('/[ \t\r\n]+/i', $name, $nrOfParts);
             if ($nameParts) {
                 for ($i = 0; $i < $nrOfParts; $i++) {
@@ -866,14 +866,14 @@ class Util
         return $emails;
     }
 
-    public static function trimmedStrlen(string $str): string
+    public static function trimmedStrlen(string $str): int
     {
-        return \voku\helper\UTF8::strlen(\voku\helper\UTF8::trim($str));
+        return (int)\voku\helper\UTF8::strlen(\voku\helper\UTF8::trim($str));
     }
 
     public static function autoParagraph(string $text): string
     {
-        if (!preg_match('%(<p[^>]*>.*?</p>)%i', $text, $regs)) {
+        if (!preg_match('%(<p[^>]*>.*?</p>)%i', $text)) {
             return sprintf('<p class="util-autoParagraph">%s</p>', $text);
         } else {
             return $text;
@@ -882,7 +882,7 @@ class Util
 
     public static function isHttpsRequest(): bool
     {
-        return (isset($_SERVER['HTTPS']) && strlen($_SERVER['HTTPS']) > 0 && $_SERVER['HTTPS'] != 'off') ? true : false;
+        return isset($_SERVER['HTTPS']) && strlen($_SERVER['HTTPS']) > 0 && $_SERVER['HTTPS'] != 'off';
     }
 
     public static function singlelinefy(string $text): string
@@ -892,7 +892,7 @@ class Util
 
     public static function floatval($value): float
     {
-        return floatval(str_replace(',', '.', $value));
+        return floatval(str_replace(',', '.', (string)$value));
     }
 
     public static function clamp($min, $max, $currentValue)
@@ -913,6 +913,7 @@ class Util
         return $url;
     }
 
+    #[\JetBrains\PhpStorm\Pure]
     public static function autoAppendSlash(string $url, string $slash = '/'): string
     {
         if (!\Illuminate\Support\Str::endsWith($url, $slash)) {
@@ -997,7 +998,7 @@ class Util
      *
      * Credits http://stackoverflow.com/a/632786
      *
-     * @param $file
+     * @param string $file
      * @return bool
      */
     public static function isTextFile(string $file): bool
@@ -1009,10 +1010,10 @@ class Util
         $finfo = finfo_open(FILEINFO_MIME);
 
         //check to see if the mime-type starts with 'text'
-        $isText = substr(finfo_file($finfo, $file), 0, 4) == 'text';
+        $isText = str_starts_with(finfo_file($finfo, $file), 'text');
 
         if (!$isText) {
-            $firstBytes = file_get_contents($file, null, null, 0, 512);
+            $firstBytes = file_get_contents($file, false, null, 0, 512);
             $firstBytes = str_replace(array("\t", "\r", "\n"), ' ', $firstBytes);
             $isText = is_string($firstBytes) === true && ctype_print($firstBytes) === true;
         }
@@ -1026,8 +1027,8 @@ class Util
      * Credits https://stackoverflow.com/questions/3491353/php-regex-remove-font-tag/3491371#3491371
      * Modified by Tormi
      *
-     * @param $str
-     * @param $tags
+     * @param string $str
+     * @param array $tags
      * @param bool $stripContent
      * @return string
      */
@@ -1127,7 +1128,7 @@ class Util
             return false;
         }
 
-        if (strpos($value, 'N;') === 0) {
+        if (str_starts_with($value, 'N;')) {
             return true;
         }
 
@@ -1178,12 +1179,8 @@ class Util
                         }
                     }
                     if (isset($args[1]['___doNotMerge']) && $args[1]['___doNotMerge'] == true) {
-                        if ($args[1]['___doNotMerge'] == true) {
-                            unset($args[1]['___doNotMerge']);
-                            return $args[1];
-                        } else {
-                            unset($args[1]['___doNotMerge']);
-                        }
+                        unset($args[1]['___doNotMerge']);
+                        return $args[1];
                     }
                     foreach (array_unique(array_merge(array_keys($args[0]), array_keys($args[1]))) as $key) {
                         $isKey0 = array_key_exists($key, $args[0]);
@@ -1208,7 +1205,6 @@ class Util
                 array_shift($args);
 
                 return self::arrayMergeDeep(...$args); // !! PHP 5.6 feature
-                break;
         }
     }
 
