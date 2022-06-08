@@ -1214,10 +1214,11 @@ class Util
      * @param int $itemsCount
      * @param callable $workload ($offset, $batchSize)
      * @param int $batchSize
+     * @param int $initialOffset
      */
-    public static function runBatchAction(int $itemsCount, callable $workload, int $batchSize): void
+    public static function runBatchAction(int $itemsCount, callable $workload, int $batchSize, int $initialOffset = 0): void
     {
-        $offset = 0;
+        $offset = $initialOffset;
 
         while ($offset < $itemsCount) {
             $workload($offset, $batchSize);
