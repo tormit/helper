@@ -892,6 +892,10 @@ class Util
 
     public static function floatval($value): float
     {
+        if (is_float($value)) {
+            return $value;
+        }
+
         return floatval(str_replace(',', '.', (string)$value));
     }
 
@@ -1050,7 +1054,7 @@ class Util
     public static function randFloat(float $min, float $max, int $decimals = 2): float
     {
         $step = pow(10, $decimals);
-        return round((rand($min * $step, $max * $step) / $step), $decimals);
+        return round((rand((int)($min * $step), (int)($max * $step)) / $step), $decimals);
     }
 
 
