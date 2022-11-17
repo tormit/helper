@@ -1225,7 +1225,9 @@ class Util
         $offset = $initialOffset;
 
         while ($offset < $itemsCount) {
-            $workload($offset, $batchSize);
+            if ($workload($offset, $batchSize) === false) {
+                break;
+            }
 
             $offset += $batchSize;
         }
