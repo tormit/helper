@@ -61,6 +61,17 @@ class Sleeper
      * @param callable $condition Callback params (int $attemptNumber)
      * @return bool
      */
+    public function untilTrue(callable $condition): bool
+    {
+        return $this->whileTrue($condition);
+    }
+
+    /**
+     * Waits for gives time x times until condition is true.
+     *
+     * @param callable $condition Callback params (int $attemptNumber)
+     * @return bool
+     */
     public function whileTrue(callable $condition): bool
     {
         $attempt = 1;
