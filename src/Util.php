@@ -13,6 +13,7 @@
  * @version 1.1.1 6th November 2011 __() checks if I18N is enabled.
  * @version 2.0 27th February 2015 Namespaced. Cleanup.
  * @version 2.5 29th July 2015 Cleanup of legacy dependencies.
+ * @version 3.0 16th March 2023 Cleanup of legacy dependencies.
  *
  * @todo Write unit tests.
  *
@@ -21,6 +22,8 @@
 declare(strict_types=1);
 
 namespace Tormit\Helper;
+
+use Tormit\Helper\Enums\PrependHttp as EnumPrependHttp;
 
 class Util
 {
@@ -242,14 +245,8 @@ class Util
      */
     public static function findExt(string $filename): string
     {
-        $filename = strtolower($filename);
-        $exts = explode(".", $filename);
-
-        if (count($exts) === 0) {
-            return '';
-        }
-
-        return array_pop($exts);
+        $fileInfo = new \SplFileInfo($filename);
+        return $fileInfo->getExtension();
     }
 
     /**
@@ -257,15 +254,12 @@ class Util
      *
      * @param string $filename
      *
-     * @return  string  found extension
+     * @return  string  found filename without extension
      */
     public static function findFilename(string $filename): string
     {
-        $filename = basename($filename);
-        $exts = explode(".", $filename);
-        array_pop($exts);
-
-        return implode('.', $exts);
+        $fileInfo = new \SplFileInfo($filename);
+        return $fileInfo->getBasename('.' . self::findExt($filename));
     }
 
     /**
@@ -361,69 +355,72 @@ class Util
     /**
      * Random string generator.
      *
-     * @param int $len
-     * @param string $extraFeed array Can be any variable. Array with some user input recommended.
-     * @param bool $allowSpecialCharacters
-     *
+     * @param int $length
+     * @param string|null $extraFeed
+     * @param bool $includeSpecialChars
      * @return  string  generated string
      *
+     * @throws \Exception
      * @version 1.0 7th january 2006
      * @version 2.0 10th July 2011 - Improved randomness.
      * @version 2.5 11th July 2013 - Improved randomness. Special characters option.
+     * @version 2.5 11th July 2013 - Improved randomness. Special characters option.
+     * @version 3.0 11th July 2023 - Using random_bytes from PHP 7.0+
      */
-    public static function randStr(int $len, string $extraFeed, bool $allowSpecialCharacters = false): string
+    public static function randStr(int $length = 32, ?string $extraFeed = null, bool $includeSpecialChars = true): string
     {
-        $newString = "";
-        $symbols = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
-        $symbolsSpecial = '!"#%&/\()[]{}+-_.,:;|';
-
-        $symbols .= str_repeat($symbols, 10);
-        ob_start();
-        var_dump($extraFeed);
-        $symbols .= ob_get_clean();
-        $symbols .= md5($symbols) . mt_rand(10000, mt_getrandmax());
-        if (function_exists('openssl_random_pseudo_bytes')) {
-            $symbols .= bin2hex(openssl_random_pseudo_bytes(100));
+        if ($length <= 0) {
+            throw new \InvalidArgumentException('Length must be a positive integer.');
         }
 
-        if ($allowSpecialCharacters) {
-            $symbols .= str_repeat($symbolsSpecial, 100);
+        $characters = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+        if ($includeSpecialChars) {
+            $characters .= '!@#$%^&*()-_=+[]{}|;:,.<>?';
+        }
+        if ($extraFeed) {
+            $characters .= $extraFeed;
         }
 
-        $symbols = str_shuffle($symbols);
+        $charactersLength = strlen($characters);
+        $randomBytes = random_bytes($length);
+        $randomString = '';
 
-        $i = 0;
-        while ($i != $len) {
-            usleep(mt_rand(0, 10)); // sleep for random time in [0..10]
-            $symbol = substr($symbols, mt_rand(0, strlen($symbols) - 1), 1);
-            if (!$allowSpecialCharacters && ctype_alnum($symbol)) {
-                $newString .= $symbol;
-                $i++;
-            } elseif ($allowSpecialCharacters) {
-                $newString .= $symbol;
-                $i++;
-            }
+        for ($i = 0; $i < $length; ++$i) {
+            $randomString .= $characters[ord($randomBytes[$i]) % $charactersLength];
         }
 
-        return $newString;
+        return $randomString;
     }
 
     /**
      * Return one or more elements randomly from array
      *
-     * @param array $arr Source array
-     * @param int $num Number of elements to return
+     * @param array $inputArray Source array
+     * @param int $count Number of elements to return
      * @return mixed Random elements
      **/
-    public static function array_random(array $arr, int $num = 1)
+    public static function array_random(array $inputArray, int $count = 1): mixed
     {
-        shuffle($arr);
-
-        $r = [];
-        for ($i = 0; $i < $num; $i++) {
-            $r[] = $arr[$i];
+        if ($count <= 0) {
+            throw new \InvalidArgumentException('Count must be a positive integer.');
         }
-        return $num == 1 ? $r[0] : $r;
+
+        if ($count > count($inputArray)) {
+            return null;
+        }
+
+        $pickedElements = [];
+        $arrayLength = count($inputArray);
+
+        for ($i = 0; $i < $count; $i++) {
+            $randomIndex = random_int($i, $arrayLength - 1);
+            if ($randomIndex !== $i) {
+                $pickedElements[$i] = $pickedElements[$randomIndex] ?? $inputArray[$randomIndex];
+            }
+            $pickedElements[$randomIndex] = $inputArray[$i];
+        }
+
+        return $count === 1 ? $pickedElements[0] : array_slice($pickedElements, 0, $count);
     }
 
     /**
@@ -445,42 +442,27 @@ class Util
     }
 
     /**
-     * @param array $row [name => value]
+     * @param array<string, string> $row [name => value]
      * @param string $prefix
      * @param string $suffix
      * @return string
      */
     public static function generatePhpConstants(array $row, string $prefix = '', string $suffix = ''): string
     {
-        $lines = '';
+        $constants = "";
 
-        $santitizeName = function ($name) {
-            return strtoupper(preg_replace('/[^a-z^0-9^_^\x7f-\xff][^a-z^0-9^_^\x7f-\xff]*/i', '', $name));
-        };
-
-        foreach (array_flip($row) as $name => $value) {
-            $lines .= sprintf(
-                "const %s%s%s = %s;\n",
-                $santitizeName($prefix),
-                $santitizeName($name),
-                $santitizeName($suffix),
-                var_export($value, true)
-            );
+        foreach ($row as $key => $value) {
+            $constantName = strtoupper(self::sanitizeConstantName($prefix . $key . $suffix));
+            $constantValue = var_export($value, true);
+            $constants .= "const {$constantName} = {$constantValue};\n";
         }
 
-        return $lines;
+        return $constants;
     }
 
-    /**
-     * Flatten a multi-dimensional array
-     *
-     * @param array $array Source array
-     * @return mixed flat array
-     **/
-
-    public static function array_flatten(array $array): array
+    private static function sanitizeConstantName(string $name): string
     {
-        return \Illuminate\Support\Arr::flatten($array);
+        return preg_replace('/[^a-zA-Z0-9_]/', '', $name);
     }
 
     /**
@@ -501,22 +483,6 @@ class Util
             array('\\', '/')
         )) ? '' : dirname($_SERVER['SCRIPT_NAME']);
         return (($full) ? 'http' . $https . '://' . $_SERVER['SERVER_NAME'] : '') . $scriptDir;
-    }
-
-    /**
-     * Fixes http address.
-     *
-     * @param string $www
-     * @return string fixed input
-     * @deprecated Use Util::prependHttp() instead
-     *
-     */
-    public static function fixHttpAddress(string $www): string
-    {
-        if (!str_starts_with($www, 'http://')) {
-            $www = 'http://' . $www;
-        }
-        return $www;
     }
 
     /**
@@ -573,24 +539,24 @@ class Util
     /**
      * Prepends "http://" to the string.
      *
-     * @param string $string Incomplete url.
+     * @param string $url Incomplete url.
      * @return string String with preceding "http://"
      */
-    public static function prependHttp(string $string): string
+    public static function prependHttp(string $url, EnumPrependHttp $useHttps = EnumPrependHttp::False): string
     {
-        if (strlen($string) > 0) {
-            preg_match('%(\w+)://(\S+)%', $string, $matches, PREG_OFFSET_CAPTURE);
-            if (count($matches) <= 2 || $matches[1][1] !== 0) {
-
-                if (stripos($string, '://') === 0) {
-                    return 'http' . $string;
-                }
-
-                return 'http://' . $string;
-            }
+        if (str_starts_with($url, 'http://') || str_starts_with($url, 'https://')) {
+            return $url;
         }
 
-        return $string;
+        if ($useHttps === EnumPrependHttp::Auto && self::isHttpsRequest()) {
+            $useHttps = EnumPrependHttp::True;
+        }
+
+        if ($useHttps === EnumPrependHttp::True) {
+            return 'https://' . $url;
+        } else {
+            return 'http://' . $url;
+        }
     }
 
     /**
@@ -739,93 +705,73 @@ class Util
     /**
      * Util for file size
      *
-     * @param int $size File size in bytes
+     * @param int $bytes File size in bytes
      * @param string $sep
      * @return string Converted file size with unit
      */
-    public static function fileSize(int $size, string $sep = ' '): string
+    public static function fileSize(int $bytes, string $sep = ' '): string
     {
-        $unit = null;
-        $units = array('B', 'KB', 'MB', 'GB', 'TB');
-
-        for ($i = 0, $c = count($units); $i < $c; $i++) {
-            if ($size > 1024) {
-                $size = $size / 1024;
-            } else {
-                $unit = $units[$i];
-                break;
-            }
+        if ($bytes < 0) {
+            throw new \InvalidArgumentException('Bytes must be a non-negative integer.');
         }
 
-        return round($size, 2) . $sep . $unit;
+        $units = ['B', 'KiB', 'MiB', 'GiB', 'TiB', 'PiB', 'EiB', 'ZiB', 'YiB'];
+        $unitIndex = 0;
+
+        while ($bytes >= 1024 && $unitIndex < count($units) - 1) {
+            $bytes /= 1024;
+            $unitIndex++;
+        }
+
+        return sprintf('%.2f%s%s', $bytes, $sep, $units[$unitIndex]);
     }
 
-    public static function guessMime(string $file, string $defaultType = 'application/octet-stream'): string
+    public static function guessMime(string $filePath, string $defaultType = 'application/octet-stream'): string
     {
-        if (!is_readable($file)) {
-            return $defaultType;
+        // Attempt to get the MIME type using the Fileinfo extension
+        $finfo = new \finfo(FILEINFO_MIME_TYPE);
+        $mimeType = $finfo->file($filePath);
+
+        // If the MIME type was successfully retrieved, return it
+        if ($mimeType !== false) {
+            return $mimeType;
         }
 
-        if (isset(self::$extensionToType[self::findExt($file)])) {
-            return self::$extensionToType[self::findExt($file)];
+        // Attempt to get the MIME type based on the file extension
+        $extension = pathinfo($filePath, PATHINFO_EXTENSION);
+
+        if (array_key_exists($extension, self::$extensionToType)) {
+            return self::$extensionToType[$extension];
         }
 
-        if (class_exists('\finfo')) {
-            if (!$finfo = new \finfo(FILEINFO_MIME)) {
-                return $defaultType;
-            }
-
-            $type = $finfo->file($file);
-
-            // remove charset (added as of PHP 5.3)
-            if (false !== $pos = strpos($type, ';')) {
-                $type = substr($type, 0, $pos);
-            }
-
-            return $type;
-        }
-
-
+        // Return the default MIME type if the MIME type could not be determined
         return $defaultType;
     }
 
     public static function iniGetBytes(string $key): float
     {
-        $val = ini_get($key);
-        $val = trim($val);
-        $last = strtolower($val[strlen($val) - 1]);
-        switch ($last) {
-            // The 'G' modifier is available since PHP 5.1.0
+        $iniValue = ini_get($key);
+        $iniValue = trim($iniValue);
+        $lastChar = strtolower($iniValue[strlen($iniValue) - 1]);
+
+        // Remove the last character if it's a unit (K, M, or G)
+        if (in_array($lastChar, ['k', 'm', 'g'])) {
+            $iniValue = substr($iniValue, 0, -1);
+        }
+
+        // Convert the value to bytes based on the unit
+        switch ($lastChar) {
             case 'g':
-                $val *= 1024;
+                $iniValue *= 1024;
+            // Fall through intended
             case 'm':
-                $val *= 1024;
+                $iniValue *= 1024;
+            // Fall through intended
             case 'k':
-                $val *= 1024;
+                $iniValue *= 1024;
         }
 
-        return $val;
-    }
-
-    public static function arrayFlatten(array $a1, string $parentKey = '', int $level = 1, array $except = [])
-    {
-        $flat = [];
-        foreach ($a1 as $k => $v) {
-            if (in_array($k, $except)) {
-                $flat[$parentKey . $k] = $v;
-                continue;
-            }
-
-            if (is_array($v)) {
-                if ($level <= 50) {
-                    $flat += self::arrayFlatten($v, $parentKey . $k . '___', $level++, $except);
-                }
-            } else {
-                $flat[$parentKey . $k] = $v;
-            }
-        }
-
-        return $flat;
+        return $iniValue;
     }
 
     public static function parseYoutubeUrl(string $url): ?string
@@ -882,21 +828,48 @@ class Util
 
     public static function isHttpsRequest(): bool
     {
-        return isset($_SERVER['HTTPS']) && strlen($_SERVER['HTTPS']) > 0 && $_SERVER['HTTPS'] != 'off';
+        // Ignore CLI executions
+        if (PHP_SAPI === 'cli') {
+            return false;
+        }
+
+        // Check for common server variables indicating HTTPS
+        if (isset($_SERVER['HTTPS']) && strtolower($_SERVER['HTTPS']) !== 'off') {
+            return true;
+        }
+
+        // Check for cloud provider-specific variables
+        if (isset($_SERVER['HTTP_X_FORWARDED_PROTO']) && strtolower($_SERVER['HTTP_X_FORWARDED_PROTO']) === 'https') {
+            return true;
+        }
+
+        if (isset($_SERVER['HTTP_X_FORWARDED_SSL']) && strtolower($_SERVER['HTTP_X_FORWARDED_SSL']) === 'on') {
+            return true;
+        }
+
+        if (isset($_SERVER['HTTP_X_ARR_SSL']) || isset($_SERVER['HTTP_X_SSL'])) {
+            return true;
+        }
+
+        // Default to false if no indication of HTTPS is found
+        return false;
     }
 
     public static function singlelinefy(string $text): string
     {
-        return strip_tags(str_replace(array("\n", "\r"), ' ', $text));
+        return strip_tags(preg_replace('/\s+/', ' ', trim($text)));
     }
 
-    public static function floatval($value): float
+    public static function floatval(string|int|float|null $string): float
     {
-        if (is_float($value)) {
-            return $value;
+        if (!$string) {
+            return 0.0;
         }
 
-        return floatval(str_replace(',', '.', (string)$value));
+        // Replace commas with periods
+        $string = str_replace(',', '.', (string)$string);
+
+        return floatval($string);
     }
 
     public static function clamp($min, $max, $currentValue)
@@ -1002,27 +975,19 @@ class Util
      *
      * Credits http://stackoverflow.com/a/632786
      *
-     * @param string $file
+     * @param string $filePath
      * @return bool
      */
-    public static function isTextFile(string $file): bool
+    public static function isTextFile(string $filePath): bool
     {
-        if (!file_exists($file) || !is_readable($file)) {
+        if (!file_exists($filePath) || !is_readable($filePath)) {
             return false;
         }
-        // return mime type ala mimetype extension
-        $finfo = finfo_open(FILEINFO_MIME);
 
-        //check to see if the mime-type starts with 'text'
-        $isText = str_starts_with(finfo_file($finfo, $file), 'text');
+        $finfo = new \finfo(FILEINFO_MIME_TYPE);
+        $mimeType = $finfo->file($filePath);
 
-        if (!$isText) {
-            $firstBytes = file_get_contents($file, false, null, 0, 512);
-            $firstBytes = str_replace(array("\t", "\r", "\n"), ' ', $firstBytes);
-            $isText = is_string($firstBytes) === true && ctype_print($firstBytes) === true;
-        }
-
-        return $isText;
+        return (str_starts_with($mimeType, 'text/'));
     }
 
     /**
@@ -1053,8 +1018,14 @@ class Util
 
     public static function randFloat(float $min, float $max, int $decimals = 2): float
     {
-        $step = pow(10, $decimals);
-        return round((rand((int)($min * $step), (int)($max * $step)) / $step), $decimals);
+        if ($min >= $max) {
+            throw new \InvalidArgumentException('The $min parameter must be less than the $max parameter.');
+        }
+
+        $factor = 10 ** $decimals;
+        $randomInt = mt_rand((int)($min * $factor), (int)($max * $factor));
+
+        return round($randomInt / $factor, $decimals);
     }
 
 
