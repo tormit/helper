@@ -13,9 +13,7 @@
  * @version 1.1.1 6th November 2011 __() checks if I18N is enabled.
  * @version 2.0 27th February 2015 Namespaced. Cleanup.
  * @version 2.5 29th July 2015 Cleanup of legacy dependencies.
- * @version 3.0 16th March 2023 Cleanup of legacy dependencies.
- *
- * @todo Write unit tests.
+ * @version 3.0 16th March 2023 Modernized many functions. Min PHP version 8.1. Added tests.
  *
  * @copyright Tormi Talv
  */
@@ -241,7 +239,7 @@ class Util
      *
      * @param string $filename
      *
-     * @return  string  found extension
+     * @return string Found extension
      */
     public static function findExt(string $filename): string
     {
@@ -253,13 +251,19 @@ class Util
      * Find filename from file name
      *
      * @param string $filename
-     *
-     * @return  string  found filename without extension
+     * @param bool $keepExtension
+     * @return string Found filename without extension by default
      */
-    public static function findFilename(string $filename): string
+    public static function findFilename(string $filename, bool $keepExtension = false): string
     {
         $fileInfo = new \SplFileInfo($filename);
-        return $fileInfo->getBasename('.' . self::findExt($filename));
+
+        $suffix = '';
+        if (!$keepExtension) {
+            $suffix = '.' . self::findExt($filename);
+        }
+
+        return $fileInfo->getBasename($suffix);
     }
 
     /**
@@ -269,7 +273,7 @@ class Util
      * @param bool $clearOnly
      * @param bool $preserveRootDir Whether to remove root of $dir.
      *
-     * @param callable|null $preCondition ($file)
+     * @param callable|null(string):string $preCondition ($file)
      * @return boolean
      */
     public static function rmdirPath(string $dir, bool $clearOnly = false, bool $preserveRootDir = true, ?callable $preCondition = null): bool
@@ -358,6 +362,7 @@ class Util
      * @param int $length
      * @param string|null $extraFeed
      * @param bool $includeSpecialChars
+     * @param bool $includeNumbers
      * @return  string  generated string
      *
      * @throws \Exception
@@ -365,15 +370,18 @@ class Util
      * @version 2.0 10th July 2011 - Improved randomness.
      * @version 2.5 11th July 2013 - Improved randomness. Special characters option.
      * @version 2.5 11th July 2013 - Improved randomness. Special characters option.
-     * @version 3.0 11th July 2023 - Using random_bytes from PHP 7.0+
+     * @version 3.0 11th July 2023 - Using random_bytes from PHP 7.0+, configurable character sets
      */
-    public static function randStr(int $length = 32, ?string $extraFeed = null, bool $includeSpecialChars = true): string
+    public static function randStr(int $length = 32, ?string $extraFeed = null, bool $includeSpecialChars = true, bool $includeNumbers = true): string
     {
         if ($length <= 0) {
             throw new \InvalidArgumentException('Length must be a positive integer.');
         }
 
-        $characters = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+        $characters = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ';
+        if ($includeNumbers) {
+            $characters .= '0123456789';
+        }
         if ($includeSpecialChars) {
             $characters .= '!@#$%^&*()-_=+[]{}|;:,.<>?';
         }
@@ -399,7 +407,7 @@ class Util
      * @param int $count Number of elements to return
      * @return mixed Random elements
      **/
-    public static function array_random(array $inputArray, int $count = 1): mixed
+    public static function arrayRandom(array $inputArray, int $count = 1): mixed
     {
         if ($count <= 0) {
             throw new \InvalidArgumentException('Count must be a positive integer.');
@@ -442,19 +450,19 @@ class Util
     }
 
     /**
-     * @param array<string, string> $row [name => value]
+     * @param array<string, string> $keyValuePairs [name => value]
      * @param string $prefix
      * @param string $suffix
      * @return string
      */
-    public static function generatePhpConstants(array $row, string $prefix = '', string $suffix = ''): string
+    public static function generatePhpConstants(array $keyValuePairs, string $prefix = '', string $suffix = ''): string
     {
         $constants = "";
 
-        foreach ($row as $key => $value) {
+        foreach ($keyValuePairs as $key => $value) {
             $constantName = strtoupper(self::sanitizeConstantName($prefix . $key . $suffix));
             $constantValue = var_export($value, true);
-            $constants .= "const {$constantName} = {$constantValue};\n";
+            $constants .= "const $constantName = $constantValue;\n";
         }
 
         return $constants;
@@ -598,44 +606,33 @@ class Util
         return $string;
     }
 
-    /**
-     * @param string $content
-     * @param string $keyword
-     * @param int $size
-     * @return string
-     */
-    public static function truncateAroundKeyword(string $content, string $keyword, int $size = 80): string
+    public static function truncateAroundKeyword(string $text, string $search, int $length = 10, string $wrapTag = 'strong'): string
     {
-        $content = \voku\helper\UTF8::strip_tags($content);
-        $pos = \voku\helper\UTF8::stripos($content, $keyword);
+        $searchPosition = stripos($text, $search);
 
-        if (!$pos) {
-            $pos = 0;
+        if ($searchPosition === false) {
+            return $text;
         }
 
-        $start = $pos - $size;
-        if ($start < 0) {
-            $start = 0;
+        $start = max(0, $searchPosition - $length);
+        $end = min(strlen($text), $searchPosition + strlen($search) + $length);
+
+        $truncated = substr($text, $start, $end - $start);
+
+        if ($wrapTag !== '') {
+            $wrappedSearch = "<$wrapTag>$search</$wrapTag>";
+            $truncated = substr_replace($truncated, $wrappedSearch, $searchPosition - $start, strlen($search));
         }
 
-        $length = $size + \voku\helper\UTF8::strlen($keyword) + $size;
-
-        $dots1 = '...';
-        if ($start === 0) {
-            $dots1 = '';
-        }
-        $dots2 = '...';
-        if ($start + $length >= \voku\helper\UTF8::strlen($content)) {
-            $dots2 = '';
-        }
-        $truncated = $dots1 . \voku\helper\UTF8::substr($content, $start, $size + \voku\helper\UTF8::strlen($keyword) + $size) . $dots2;
-
-        $finalValue = \voku\helper\UTF8::str_ireplace($keyword, "<strong>$keyword</strong>", $truncated);
-        if (is_string($finalValue)) {
-            return $finalValue;
+        if ($start > 0) {
+            $truncated = '...' . $truncated;
         }
 
-        return $content;
+        if ($end < strlen($text)) {
+            $truncated .= '...';
+        }
+
+        return $truncated;
     }
 
     /**
@@ -774,24 +771,21 @@ class Util
         return $iniValue;
     }
 
-    public static function parseYoutubeUrl(string $url): ?string
+    public static function parseYoutubeVideoCode(string $url): ?string
     {
-        $pattern = '#^(?:https?://)?'; # Optional URL scheme. Either http or https.
-        $pattern .= '(?:www\.)?'; #  Optional www subdomain.
-        $pattern .= '(?:'; #  Group host alternatives:
-        $pattern .= 'youtu\.be/'; #    Either youtu.be,
-        $pattern .= '|youtube\.com'; #    or youtube.com
-        $pattern .= '(?:'; #    Group path alternatives:
-        $pattern .= '/embed/'; #      Either /embed/,
-        $pattern .= '|/v/'; #      or /v/,
-        $pattern .= '|/watch\?v='; #      or /watch?v=,
-        $pattern .= '|/watch\?.+&v='; #      or /watch?other_param&v=
-        $pattern .= ')'; #    End path alternatives.
-        $pattern .= ')'; #  End host alternatives.
-        $pattern .= '([\w-]{11})'; # 11 characters (Length of Youtube video ids).
-        $pattern .= '(?:.+)?$#x'; # Optional other ending URL parameters.
-        preg_match($pattern, $url, $matches);
-        return (isset($matches[1])) ? $matches[1] : null;
+        $parsedUrl = parse_url($url);
+
+        if ($parsedUrl === false || !isset($parsedUrl['host'], $parsedUrl['query'])) {
+            return null;
+        }
+
+        if (str_contains($parsedUrl['host'], 'youtube.com') === false) {
+            return null;
+        }
+
+        parse_str($parsedUrl['query'], $queryParams);
+
+        return $queryParams['v'] ?? null;
     }
 
 
@@ -869,7 +863,12 @@ class Util
         // Replace commas with periods
         $string = str_replace(',', '.', (string)$string);
 
-        return floatval($string);
+        // Check for standard decimal notation or scientific notation
+        if (preg_match('/^[-+]?\d*\.?\d+([eE][-+]?\d+)?$/', $string)) {
+            return floatval($string);
+        }
+
+        return 0.0;
     }
 
     public static function clamp($min, $max, $currentValue)
@@ -996,24 +995,35 @@ class Util
      * Credits https://stackoverflow.com/questions/3491353/php-regex-remove-font-tag/3491371#3491371
      * Modified by Tormi
      *
-     * @param string $str
+     * @param string $html
      * @param array $tags
      * @param bool $stripContent
      * @return string
      */
-    public static function stripSelectedTags(string $str, array $tags = [], bool $stripContent = false): string
+    public static function stripSelectedTags(string $html, array $tags = [], bool $stripContent = false): string
     {
         if (count($tags) == 0) {
-            return strip_tags($str);
+            return strip_tags($html);
         }
-        $content = '';
+
+        $htmlWithTagsRemoved = $html;
+
         foreach ($tags as $tag) {
+            $tag = strtolower($tag);
+
             if ($stripContent) {
-                $content = '(.+</*' . $tag . '>*)';
+                $pattern = "#<\s*{$tag}[^>]*>.*?<\s*/\s*{$tag}\s*>#is";
+                $htmlWithTagsRemoved = preg_replace($pattern, '', $htmlWithTagsRemoved);
+            } else {
+                $openTagPattern = "#<\s*{$tag}[^>]*>#i";
+                $closeTagPattern = "#<\s*/\s*{$tag}\s*>#i";
+
+                $htmlWithTagsRemoved = preg_replace($openTagPattern, '', $htmlWithTagsRemoved);
+                $htmlWithTagsRemoved = preg_replace($closeTagPattern, '', $htmlWithTagsRemoved);
             }
-            $str = preg_replace('#</?' . $tag . '[^>]*>' . $content . '#is', '', $str);
         }
-        return $str;
+
+        return $htmlWithTagsRemoved;
     }
 
     public static function randFloat(float $min, float $max, int $decimals = 2): float
@@ -1107,7 +1117,7 @@ class Util
             return true;
         }
 
-        return preg_match('/([a|b|c|d|o|r]{1}):\d+/i', $value);
+        return !!preg_match('/([a|b|c|d|o|r]{1}):\d+/i', $value);
     }
 
 
