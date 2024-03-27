@@ -557,7 +557,7 @@ class Util
                 // create empty pieces to avoid breaking application when reading array values
                 $pieces = array_fill(0, $numberOfPieces, '');
             }
-        } else if ($type == self::DIVIDE_TEXT_FILL) {
+        } elseif ($type == self::DIVIDE_TEXT_FILL) {
             $numberOfFullPieces = floor($stringLength / $pieceSize);
             $reminder = $stringLength % $pieceSize;
 
@@ -636,10 +636,17 @@ class Util
      * @param string $content
      * @param string $keyword
      * @param int $size
+     * @param string $wrapKeywordIn
+     * @param string $end
      * @return string
      */
-    public static function truncateAroundKeyword(string $content, string $keyword, int $size = 80): string
-    {
+    public static function truncateAroundKeyword(
+        string $content,
+        string $keyword,
+        int $size = 80,
+        string $wrapKeywordIn = '<strong>%s</strong>',
+        string $end = '...'
+    ): string {
         $content = \voku\helper\UTF8::strip_tags($content);
         $pos = \voku\helper\UTF8::stripos($content, $keyword);
 
@@ -654,17 +661,17 @@ class Util
 
         $length = $size + \voku\helper\UTF8::strlen($keyword) + $size;
 
-        $dots1 = '...';
+        $dots1 = $end;
         if ($start === 0) {
             $dots1 = '';
         }
-        $dots2 = '...';
+        $dots2 = $end;
         if ($start + $length >= \voku\helper\UTF8::strlen($content)) {
             $dots2 = '';
         }
         $truncated = $dots1 . \voku\helper\UTF8::substr($content, $start, $size + \voku\helper\UTF8::strlen($keyword) + $size) . $dots2;
 
-        $finalValue = \voku\helper\UTF8::str_ireplace($keyword, "<strong>$keyword</strong>", $truncated);
+        $finalValue = \voku\helper\UTF8::str_ireplace($keyword, strtr($wrapKeywordIn, ['%s' => $keyword]), $truncated);
         if (is_string($finalValue)) {
             return $finalValue;
         }
@@ -678,15 +685,15 @@ class Util
      *
      * @param string $text
      * @param int $length
-     * @param string $delimiter
+     * @param string $end
      * @return string
      */
-    public static function truncateText(string $text, int $length = 30, string $delimiter = '...'): string
+    public static function truncateText(string $text, int $length = 30, string $end = '...'): string
     {
         if (\voku\helper\UTF8::strlen($text) > $length) {
-            $truncatedText = \voku\helper\UTF8::substr(\voku\helper\UTF8::trim($text), 0, $length - \voku\helper\UTF8::strlen($delimiter));
+            $truncatedText = \voku\helper\UTF8::substr(\voku\helper\UTF8::trim($text), 0, $length - \voku\helper\UTF8::strlen($end));
 
-            return $truncatedText . $delimiter;
+            return $truncatedText . $end;
         }
 
         return $text;
@@ -1191,11 +1198,11 @@ class Util
                         $isKey1 = array_key_exists($key, $args[1]);
                         if ($isKey0 && $isKey1 && is_array($args[0][$key]) && is_array($args[1][$key])) {
                             $args[2][$key] = self::arrayMergeDeep($args[0][$key], $args[1][$key]);
-                        } else if ($isKey0 && $isKey1) {
+                        } elseif ($isKey0 && $isKey1) {
                             $args[2][$key] = $args[1][$key];
-                        } else if (!$isKey1) {
+                        } elseif (!$isKey1) {
                             $args[2][$key] = $args[0][$key];
-                        } else if (!$isKey0) {
+                        } elseif (!$isKey0) {
                             $args[2][$key] = $args[1][$key];
                         }
                     }
