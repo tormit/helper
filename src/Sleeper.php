@@ -90,6 +90,23 @@ class Sleeper
         return false;
     }
 
+    public function whileException(callable $operation, ?array &$exceptionLog = null): bool
+    {
+        return $this->whileTrue(
+            function ($attempt) use ($operation, &$exceptionLog) {
+                try {
+                    $operation($attempt);
+                    return true;  // If no exception, return true to stop retries
+                } catch (\Exception $e) {
+                    if ($exceptionLog !== null) {
+                        $exceptionLog[$attempt] = $e;
+                    }
+                    return false;
+                }
+            }
+        );
+    }
+
     public static function wait(): Sleeper
     {
         return new self;
