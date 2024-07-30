@@ -4,7 +4,7 @@
  * General utility functions
  * Since 2005
  *
- * PHP5
+ * PHP8
  *
  * @version 0.1 7th December 2009
  * @version 1.0 28th August 2011
@@ -13,6 +13,11 @@
  * @version 1.1.1 6th November 2011 __() checks if I18N is enabled.
  * @version 2.0 27th February 2015 Namespaced. Cleanup.
  * @version 2.5 29th July 2015 Cleanup of legacy dependencies.
+ * @version 2.6 18th July 2016 UTF8 support. Batch actions.
+ * @version 3.0 17th July 2018 More UTF8 support. PHP 7.1 minimum.
+ * @version 4.0 13th January 2021 Improvements. PHP 7.4 minimum.
+ * @version 4.1 27th March 2024 Many improvements over time.
+ * @version 5.0 30th July 2024 Cleanups and optimizations. Removed Laravel usage. PHP 8.1 minimum.
  *
  * @todo Write unit tests.
  *
@@ -370,42 +375,42 @@ class Util
      * @version 1.0 7th january 2006
      * @version 2.0 10th July 2011 - Improved randomness.
      * @version 2.5 11th July 2013 - Improved randomness. Special characters option.
+     * @version 3.0 30th July 2024 - Use random_int
      */
     public static function randStr(int $len, string $extraFeed, bool $allowSpecialCharacters = false): string
     {
-        $newString = "";
-        $symbols = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
-        $symbolsSpecial = '!"#%&/\()[]{}+-_.,:;|';
+        $alphaNum = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+        $specialChars = '!"#%&/\()[]{}+-_.,:;|';
 
-        $symbols .= str_repeat($symbols, 10);
-        ob_start();
-        var_dump($extraFeed);
-        $symbols .= ob_get_clean();
-        $symbols .= md5($symbols) . mt_rand(10000, mt_getrandmax());
-        if (function_exists('openssl_random_pseudo_bytes')) {
-            $symbols .= bin2hex(openssl_random_pseudo_bytes(100));
-        }
+        // Base symbols set is alphanumeric characters
+        $symbols = $alphaNum;
 
+        // Optionally add special characters
         if ($allowSpecialCharacters) {
-            $symbols .= str_repeat($symbolsSpecial, 100);
+            $symbols .= $specialChars;
         }
 
-        $symbols = str_shuffle($symbols);
+        // Seed additional randomness
+        $symbols .= $extraFeed;
 
-        $i = 0;
-        while ($i != $len) {
-            usleep(mt_rand(0, 10)); // sleep for random time in [0..10]
-            $symbol = substr($symbols, mt_rand(0, strlen($symbols) - 1), 1);
-            if (!$allowSpecialCharacters && ctype_alnum($symbol)) {
-                $newString .= $symbol;
-                $i++;
-            } elseif ($allowSpecialCharacters) {
-                $newString .= $symbol;
-                $i++;
-            }
+        // Convert string to an array of UTF-8 characters
+        $symbolsArray = preg_split('//u', $symbols, -1, PREG_SPLIT_NO_EMPTY);
+
+        $maxIndex = count($symbolsArray) - 1;
+
+        // Ensure the random pool is at least as large as the requested length
+        $randPoolSize = max(100, $len);  // Ensure pool is large enough
+        $pool = [];
+        for ($i = 0; $i < $randPoolSize; $i++) {
+            $randomIndex = random_int(0, $maxIndex);
+            $pool[] = $symbolsArray[$randomIndex];
         }
 
-        return $newString;
+        // Select a valid UTF-8 substring from the pool
+        $randOffset = random_int(0, $randPoolSize - $len);
+        $finalChars = array_slice($pool, $randOffset, $len);
+
+        return implode('', $finalChars);
     }
 
     /**
@@ -415,15 +420,25 @@ class Util
      * @param int $num Number of elements to return
      * @return mixed Random elements
      **/
-    public static function array_random(array $arr, int $num = 1)
+    public static function array_random(array $arr, int $num = 1): mixed
     {
-        shuffle($arr);
-
-        $r = [];
-        for ($i = 0; $i < $num; $i++) {
-            $r[] = $arr[$i];
+        if ($num === 1) {
+            // Return a single random element
+            return $arr[array_rand($arr)];
         }
-        return $num == 1 ? $r[0] : $r;
+
+        if ($num >= count($arr)) {
+            // If $num is greater than or equal to the array size, just shuffle and return the array
+            shuffle($arr);
+            return $arr;
+        }
+
+        $keys = array_rand($arr, $num);
+        $results = [];
+        foreach ($keys as $key) {
+            $results[] = $arr[$key];
+        }
+        return $results;
     }
 
     /**
@@ -477,10 +492,13 @@ class Util
      * @param array $array Source array
      * @return mixed flat array
      **/
-
     public static function array_flatten(array $array): array
     {
-        return \Illuminate\Support\Arr::flatten($array);
+        $result = [];
+        array_walk_recursive($array, function ($item) use (&$result) {
+            $result[] = $item;
+        });
+        return $result;
     }
 
     /**
@@ -924,11 +942,10 @@ class Util
         return $url;
     }
 
-    #[\JetBrains\PhpStorm\Pure]
     public static function autoAppendSlash(string $url, string $slash = '/'): string
     {
-        if (!\Illuminate\Support\Str::endsWith($url, $slash)) {
-            $url = $url . $slash;
+        if (!str_ends_with($url, $slash)) {
+            $url .= $slash;
         }
 
         return $url;
@@ -936,13 +953,25 @@ class Util
 
     public static function rotateTableArray(array $array, ?string $field = null): array
     {
-        if (!is_array(reset($array))) { // not multidimensional
+        if (empty($array)) {
+            // Return the original array if it is empty.
             return $array;
         }
+
+        $firstKey = array_key_first($array);
+        if (!is_array($array[$firstKey])) {
+            // Return the original array if the first element is not an array, indicating it's not multidimensional.
+            return $array;
+        }
+
         $newArray = [];
         foreach ($array as $i => $level1) {
+            if (!is_array($level1)) {
+                continue; // Skip if the inner element is not an array.
+            }
             foreach ($level1 as $j => $level2) {
-                if ($field !== null) {
+                if ($field !== null && isset($level2[$field])) {
+                    // Use the specified field as the key if it exists in the sub-array.
                     $newArray[$level2[$field]][$i] = $level2;
                 } else {
                     $newArray[$j][$i] = $level2;
@@ -1019,17 +1048,17 @@ class Util
         }
         // return mime type ala mimetype extension
         $finfo = finfo_open(FILEINFO_MIME);
+        $mimeType = finfo_file($finfo, $file);
+        finfo_close($finfo);
 
-        //check to see if the mime-type starts with 'text'
-        $isText = str_starts_with(finfo_file($finfo, $file), 'text');
-
-        if (!$isText) {
-            $firstBytes = file_get_contents($file, false, null, 0, 512);
-            $firstBytes = str_replace(array("\t", "\r", "\n"), ' ', $firstBytes);
-            $isText = is_string($firstBytes) === true && ctype_print($firstBytes) === true;
+        if (str_starts_with($mimeType, 'text')) {
+            return true;
         }
 
-        return $isText;
+        $firstBytes = file_get_contents($file, false, null, 0, 512);
+        $firstBytes = str_replace(["\t", "\r", "\n"], ' ', $firstBytes);
+
+        return ctype_print($firstBytes);
     }
 
     /**
@@ -1061,28 +1090,25 @@ class Util
     public static function randFloat(float $min, float $max, int $decimals = 2): float
     {
         $step = pow(10, $decimals);
-        return round((rand((int)($min * $step), (int)($max * $step)) / $step), $decimals);
+        return round(mt_rand((int)($min * $step), (int)($max * $step)) / $step, $decimals);
     }
 
 
+    // WordPress like actions and filters logic
     public static function addFilter(string $tag, callable $callback): void
     {
-        if (!isset(self::$filters[$tag])) {
-            self::$filters[$tag] = [];
-        }
-
+        self::$filters[$tag] ??= [];
         self::$filters[$tag][] = $callback;
     }
 
-    public static function applyFilters(string $tag, $value)
+    public static function applyFilters(string $tag, mixed $value): mixed
     {
-        if (isset(self::$filters[$tag]) && is_array(self::$filters[$tag])) {
-            foreach (self::$filters[$tag] as $callback) {
-                $ret = call_user_func($callback, $value);
-                if ($ret !== null) {
-                    $value = $ret;
-                }
-            }
+        if (empty(self::$filters[$tag])) {
+            return $value;
+        }
+
+        foreach (self::$filters[$tag] as $callback) {
+            $value = $callback($value) ?? $value;
         }
 
         return $value;
@@ -1090,47 +1116,19 @@ class Util
 
     public static function addAction(string $tag, callable $callback): void
     {
-        if (!isset(self::$actions[$tag])) {
-            self::$actions[$tag] = [];
-        }
-
+        self::$actions[$tag] ??= [];
         self::$actions[$tag][] = $callback;
     }
 
-    public static function applyActions(string $tag): void
+    public static function applyActions(string $tag, ...$args): void
     {
-        if (isset(self::$actions[$tag]) && is_array(self::$actions[$tag])) {
-            $args = func_get_args();
-            foreach (self::$actions[$tag] as $callback) {
-                call_user_func_array($callback, array_splice($args, 1));
-            }
-        }
-    }
-
-    public static function parseDomain(string $url): string
-    {
-        $subTlds = array(
-            'co' => 1,
-            'com' => 1,
-            'org' => 1,
-            'net' => 1,
-        );
-
-        $host = parse_url($url, PHP_URL_HOST);
-        $hostParts = explode('.', $host);
-
-        $domain = '';
-        if (count($hostParts) >= 2) {
-            if (isset($subTlds[$hostParts[count($hostParts) - 2]])) {
-                if (count($hostParts) >= 3) {
-                    $domain = $hostParts[count($hostParts) - 3] . '.' . $hostParts[count($hostParts) - 2] . '.' . $hostParts[count($hostParts) - 1];
-                }
-            } else {
-                $domain = $hostParts[count($hostParts) - 2] . '.' . $hostParts[count($hostParts) - 1];
-            }
+        if (empty(self::$actions[$tag])) {
+            return;
         }
 
-        return $domain;
+        foreach (self::$actions[$tag] as $callback) {
+            $callback(...$args);
+        }
     }
 
     public static function isSerialised(string $value): bool

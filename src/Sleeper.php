@@ -45,7 +45,7 @@ class Sleeper
      * Wait time is cumulatively multiplied by this factor.
      * Example: For sleep time 2s and 1.5x escalate, you get sleep times: 2.00 3.00 4.50 6.75 10.13 etc.
      *
-     * @param $escalateFactor
+     * @param float $escalateFactor
      * @return $this
      */
     public function escalate(float $escalateFactor): Sleeper
